@@ -175,7 +175,7 @@ export function createGrass(count, isBlocked) {
 
 /** Small white and amber flowers scattered through the meadow. */
 export function createFlowers(count, isBlocked, tag) {
-  const geo = new THREE.IcosahedronGeometry(0.06, 0);
+  const geo = new THREE.IcosahedronGeometry(0.06, 1);
   const mat = tag(new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x222222 }));
   const mesh = new THREE.InstancedMesh(geo, mat, count);
   const r = rng(7);

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { SET, tagMaterial } from '../ascii/glyphs.js';
 import { buildKnight, buildSkeleton, animateRig } from './models.js';
+import { SwordTrail } from './trail.js';
 import { env, insidePond, WORLD_RADIUS } from '../world/env.js';
 
 const ATTACK_TIME = 0.55;
@@ -29,15 +30,13 @@ export function resolveCollisions(pos, radius) {
   if (r > lim) { pos.x *= lim / r; pos.z *= lim / r; }
 }
 
-/** Glowing arc left behind by a sword swing. */
-function createSlash(full = false) {
-  const geo = full
-    ? new THREE.RingGeometry(1.2, 2.9, 40)
-    : new THREE.RingGeometry(1.0, 1.9, 24, 1, -Math.PI * 0.45, Math.PI * 0.9);
+/** Glowing ring swept out by the Whirlwind spin. */
+function createSpinRing() {
+  const geo = new THREE.RingGeometry(1.25, 2.6, 64);
   const mat = tagMaterial(new THREE.MeshBasicMaterial({ color: 0xcfe4ff, side: THREE.DoubleSide }), SET.GLOW);
   const mesh = new THREE.Mesh(geo, mat);
   mesh.rotation.x = -Math.PI / 2;
-  mesh.position.y = 1.0;
+  mesh.position.y = 1.45;
   mesh.visible = false;
   return mesh;
 }
@@ -68,16 +67,15 @@ export class Player {
     this.hurtFlash = 0;
     this.radius = 0.4;
 
-    this.slash = createSlash();
-    this.object.add(this.slash);
-    this.spinRing = createSlash(true);
+    this.trail = new SwordTrail(this.object);
+    this.spinRing = createSpinRing();
     this.object.add(this.spinRing);
 
     // A warm lantern glow around the knight so the meadow lights up as you walk.
-    this.light = new THREE.PointLight(0xffb070, 14, 13, 1.7);
+    this.light = new THREE.PointLight(0xffe0bc, 12, 13, 1.7);
     this.light.position.set(0.6, 2.4, 0.4);
     this.object.add(this.light);
-    this.lightRef = { position: new THREE.Vector3(), color: new THREE.Color(0xffb070), intensity: 0.55, range: 9 };
+    this.lightRef = { position: new THREE.Vector3(), color: new THREE.Color(0xffc890), intensity: 0.55, range: 9 };
     env.lights.unshift(this.lightRef);
     this.shadow = { x: 0, z: 0, r: 0.75, strength: 0.6 };
     env.shadows.unshift(this.shadow);
@@ -128,25 +126,19 @@ export class Player {
     if (this.attackT >= 0) {
       this.attackT += dt / ATTACK_TIME;
       attack = this.attackT;
-      const slashVisible = attack > 0.38 && attack < 0.7;
-      this.slash.visible = slashVisible;
-      if (slashVisible) {
-        const k = (attack - 0.38) / 0.32;
-        this.slash.scale.setScalar(0.8 + k * 0.35);
-        this.slash.rotation.z = Math.PI / 2 - 1.2 + k * 1.6;
-      }
-      if (this.attackT >= 1) { this.attackT = -1; this.slash.visible = false; }
+      if (this.attackT >= 1) this.attackT = -1;
     }
-    if (this.spinT >= 0) {
+    this.trail.update(attack);
+    const spinning = this.spinT >= 0;
+    if (spinning) {
       this.spinT += dt / 0.65;
       spinAngle = this.spinT * Math.PI * 4;
-      attack = 0.5; // sword held out level
       this.spinRing.visible = this.spinT > 0.1 && this.spinT < 0.9;
-      this.spinRing.scale.setScalar(0.7 + this.spinT * 0.5);
+      this.spinRing.scale.setScalar(0.75 + this.spinT * 0.4);
       if (this.spinT >= 1) { this.spinT = -1; this.spinRing.visible = false; }
     }
     this.object.rotation.y = this.facing + spinAngle;
-    animateRig(this.rig, { walk: this.walk, phase: this.phase, attack, idle: env.time });
+    animateRig(this.rig, { walk: this.walk, phase: this.phase, attack, spin: spinning, idle: env.time });
 
     this.hurtFlash = Math.max(0, this.hurtFlash - dt * 3);
     if (this.alive) {
@@ -163,7 +155,7 @@ export class Player {
 
   /** True once per swing, at the moment the blade connects. */
   strikeWindow() {
-    if (this.attackT > 0.42 && !this.hitDone) { this.hitDone = true; return 'slash'; }
+    if (this.attackT > 0.4 && !this.hitDone) { this.hitDone = true; return 'slash'; }
     if (this.spinT > 0.35 && !this.hitDone) { this.hitDone = true; return 'spin'; }
     return null;
   }
@@ -334,22 +326,27 @@ export class Skeleton {
  */
 export class HollowKing extends Skeleton {
   constructor(scene, home) {
-    const rig = buildSkeleton();
-    const gold = tagMaterial(new THREE.MeshStandardMaterial({ color: 0xd9b04a, metalness: 0.9, roughness: 0.3 }), SET.METAL);
+    const rig = buildSkeleton({
+      boneColor: 0xd6cdb4, eyeColor: 0xb06bff,
+      cape: { width: 0.42, hemWidth: 0.85, length: 1.0, outer: 0x3b1656, trim: 0xc39432, lining: 0x14060f },
+    });
+    const gold = tagMaterial(new THREE.MeshStandardMaterial({ color: 0xd9b04a, metalness: 0.9, roughness: 0.25 }), SET.METAL);
+    const gem = tagMaterial(new THREE.MeshBasicMaterial({ color: 0xc070ff }), SET.GLOW);
     const crown = new THREE.Group();
-    crown.add(new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.14, 0.06, 10, 1, true), gold));
-    for (let i = 0; i < 6; i++) {
-      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.12, 4), gold);
-      const a = (i / 6) * Math.PI * 2;
-      spike.position.set(Math.cos(a) * 0.14, 0.08, Math.sin(a) * 0.14);
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.135, 0.125, 0.06, 32, 1, true), gold);
+    band.material.side = THREE.DoubleSide;
+    crown.add(band);
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.026, 0.12, 12), gold);
+      spike.position.set(Math.cos(a) * 0.13, 0.085, Math.sin(a) * 0.13);
       crown.add(spike);
+      const g = new THREE.Mesh(new THREE.SphereGeometry(0.014, 10, 8), gem);
+      g.position.set(Math.cos(a) * 0.137, 0.0, Math.sin(a) * 0.137);
+      crown.add(g);
     }
-    crown.position.y = 0.26;
+    crown.position.y = 0.27;
     rig.neck.add(crown);
-    const cloak = tagMaterial(new THREE.MeshStandardMaterial({ color: 0x2a1238, roughness: 0.9, side: THREE.DoubleSide }), SET.DEFAULT);
-    const mantle = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 0.9, 2, 3), cloak);
-    mantle.position.set(0, 0.3, -0.12);
-    rig.torso.add(mantle);
 
     super(scene, home, 12, {
       rig, name: 'The Hollow King', scale: 2.5, hp: 1800, dmg: [26, 40], speed: 2.2,
@@ -393,8 +390,12 @@ export class HollowKing extends Skeleton {
       const k = Math.min(1, this.slamT / 1.2);
       this.slamRing.visible = this.alive;
       this.slamRing.scale.setScalar(this.slamRadius * k);
-      // Arm raised overhead while charging.
-      this.rig.arms[1].shoulder.rotation.x = -2.8 + (this.slamT > 1.2 ? 2.5 : 0);
+      // Blade raised overhead while charging, then brought down.
+      const arm = this.rig.swordArm;
+      arm.shoulder.rotation.y = 0;
+      arm.shoulder.rotation.x = this.slamT < 1.2 ? -2.9 : -0.9;
+      arm.elbow.rotation.x = 0;
+      arm.hand.rotation.x = Math.PI / 2;
       if (this.slamT >= 1.2 && !this.slamDone) {
         this.slamDone = true;
         events.shake?.(0.5);

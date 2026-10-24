@@ -3,8 +3,36 @@ import { Reflector } from 'three/examples/jsm/objects/Reflector.js';
 import { SET, tagMaterial, setAlpha } from '../ascii/glyphs.js';
 import { env, rng, WORLD_RADIUS, insidePond, FOG_COLOR, MOON_DIR, MOON_COLOR } from './env.js';
 import { createGrass, createFlowers } from './grass.js';
+import {
+  rockGeometry, canopyGeometry, columnGeometry, drumGeometry, roundedBox, lathe, turned,
+  trunkGeometry, branchGeometry, pineTier, flameGeometry,
+} from './shapes.js';
 
 const tag = (mat, set) => tagMaterial(mat, set);
+
+/**
+ * Canopy cutaway: foliage between the camera and the knight is cut away so
+ * he never disappears under a tree. Uniforms are shared by every leaf material.
+ */
+const cut = { uCutCam: { value: new THREE.Vector3() }, uCutTarget: { value: new THREE.Vector3() } };
+function cutaway(mat) {
+  mat.onBeforeCompile = (shader) => {
+    shader.uniforms.uCutCam = cut.uCutCam;
+    shader.uniforms.uCutTarget = cut.uCutTarget;
+    shader.vertexShader = 'varying vec3 vCutWorld;\n' + shader.vertexShader.replace(
+      '#include <project_vertex>',
+      '#include <project_vertex>\n  vCutWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;'
+    );
+    shader.fragmentShader = 'uniform vec3 uCutCam;\nuniform vec3 uCutTarget;\nvarying vec3 vCutWorld;\n' +
+      shader.fragmentShader.replace('void main() {', `void main() {
+  vec3 seg = uCutTarget - uCutCam;
+  float ct = clamp(dot(vCutWorld - uCutCam, seg) / dot(seg, seg), 0.0, 1.0);
+  float cd = length(vCutWorld - (uCutCam + seg * ct));
+  if (ct < 0.98 && cd < 2.4) discard;`);
+  };
+  mat.customProgramCacheKey = () => 'cutaway';
+  return mat;
+}
 
 /**
  * Ashenmere Glade: a moonlit meadow ringed by autumn trees, a still pond that
@@ -59,83 +87,84 @@ export function createWorld(scene, renderer, { grassCount = 70000 } = {}) {
   scene.add(pond);
   updaters.push(() => { pond.material.uniforms.uTime.value = env.time; });
 
-  // Moss-dark stones around the bank.
-  const stoneMat = tag(new THREE.MeshStandardMaterial({ color: 0x6d7073, roughness: 0.95, flatShading: true }), SET.STONE);
+  // Shared smooth shapes, built once and reused with different transforms.
+  const rockGeos = Array.from({ length: 6 }, (_, i) => rockGeometry(300 + i));
+  const canopyGeos = Array.from({ length: 6 }, (_, i) => canopyGeometry(500 + i));
+
+  // Mossy stones around the bank.
+  const stoneMat = tag(new THREE.MeshStandardMaterial({ color: 0x737a78, roughness: 0.9 }), SET.STONE);
+  const mossMat = tag(new THREE.MeshStandardMaterial({ color: 0x4f5d4a, roughness: 0.95 }), SET.STONE);
   const r = rng(99);
   for (let i = 0; i < 26; i++) {
     const a = (i / 26) * Math.PI * 2 + r() * 0.2;
-    const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.25 + r() * 0.35, 0), stoneMat);
-    rock.position.set(p.x + Math.cos(a) * (p.rx + 0.5), 0.05, p.z + Math.sin(a) * (p.rz + 0.5));
-    rock.scale.y = 0.55;
-    rock.rotation.set(r() * 3, r() * 3, r() * 3);
+    const rock = new THREE.Mesh(rockGeos[i % rockGeos.length], i % 3 ? stoneMat : mossMat);
+    rock.position.set(p.x + Math.cos(a) * (p.rx + 0.5), 0.02, p.z + Math.sin(a) * (p.rz + 0.5));
+    rock.scale.setScalar(0.28 + r() * 0.3);
+    rock.rotation.y = r() * Math.PI * 2;
     scene.add(rock);
   }
 
   // ------------------------------------------------------------------- ruins
-  const pillarMat = tag(new THREE.MeshStandardMaterial({ color: 0x8a8d90, roughness: 0.9, flatShading: true }), SET.STONE);
+  const pillarMat = tag(new THREE.MeshStandardMaterial({ color: 0x9a9c98, roughness: 0.85 }), SET.STONE);
   const pillarCount = 8;
   for (let i = 0; i < pillarCount; i++) {
     const a = (i / pillarCount) * Math.PI * 2 + 0.3;
     const x = RUINS.x + Math.cos(a) * 6.2;
     const z = RUINS.z + Math.sin(a) * 6.2;
     const broken = i % 3 === 1;
-    const h = broken ? 1.2 + r() * 1.4 : 4.2 + r() * 1.2;
-    const pillar = new THREE.Group();
-    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.62, h, 8), pillarMat);
-    shaft.position.y = h / 2;
-    pillar.add(shaft);
-    const base = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.4, 1.6), pillarMat);
-    base.position.y = 0.2;
-    pillar.add(base);
-    if (!broken) {
-      const cap = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.35, 1.5), pillarMat);
-      cap.position.y = h + 0.17;
-      pillar.add(cap);
-    }
+    const h = broken ? 1.6 + r() * 1.4 : 4.6 + r() * 1.2;
+    const pillar = new THREE.Mesh(columnGeometry(h, broken, 40 + i), pillarMat);
     pillar.position.set(x, 0, z);
     pillar.rotation.y = r() * Math.PI;
     scene.add(pillar);
     env.obstacles.push({ x, z, r: 0.85 });
-    blockers.push({ x, z, r: 0.9 });
+    blockers.push({ x, z, r: 0.95 });
     env.shadows.push({ x: x - MOON_DIR.x * h * 0.5, z: z - MOON_DIR.z * h * 0.5, r: 1.2, strength: 0.45 });
     if (broken) {
-      // Fallen drum segment lying beside a broken pillar.
-      const drum = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 1.3, 8), pillarMat);
+      // Fallen drum lying beside a broken column.
+      const drum = new THREE.Mesh(drumGeometry(1.3), pillarMat);
       drum.rotation.z = Math.PI / 2;
       drum.rotation.y = r() * Math.PI;
       const ox = x + Math.cos(a) * 1.8;
       const oz = z + Math.sin(a) * 1.8;
-      drum.position.set(ox, 0.5, oz);
+      drum.position.set(ox, 0.54, oz);
       scene.add(drum);
       env.obstacles.push({ x: ox, z: oz, r: 0.75 });
       blockers.push({ x: ox, z: oz, r: 0.8 });
     }
   }
 
-  // Altar floor and slab.
-  const floor = new THREE.Mesh(new THREE.CylinderGeometry(3.6, 3.8, 0.18, 10), pillarMat);
-  floor.position.set(RUINS.x, 0.09, RUINS.z);
+  // Altar floor (stepped round dais) and a rounded stone altar.
+  const floor = new THREE.Mesh(lathe([[0.001, 0.22], [3.45, 0.22], [3.55, 0.18], [3.6, 0.12], [3.75, 0.1], [3.85, 0.04], [3.9, 0]], 72), pillarMat);
+  floor.position.set(RUINS.x, 0, RUINS.z);
   scene.add(floor);
-  const altar = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.9, 1.1), pillarMat);
-  altar.position.set(RUINS.x, 0.6, RUINS.z);
+  const altar = new THREE.Mesh(roundedBox(2.2, 0.85, 1.1, 0.12), pillarMat);
+  altar.position.set(RUINS.x, 0.64, RUINS.z);
   scene.add(altar);
+  const altarTop = new THREE.Mesh(roundedBox(2.45, 0.16, 1.3, 0.06), pillarMat);
+  altarTop.position.set(RUINS.x, 1.12, RUINS.z);
+  scene.add(altarTop);
   env.obstacles.push({ x: RUINS.x, z: RUINS.z, r: 1.2 });
 
   // Braziers either side of the altar.
   const fireMat = tag(new THREE.MeshBasicMaterial({ color: 0xffa040 }), SET.GLOW);
   const fireCore = tag(new THREE.MeshBasicMaterial({ color: 0xfff0b0 }), SET.GLOW);
-  const ironMat = tag(new THREE.MeshStandardMaterial({ color: 0x2a2624, metalness: 0.6, roughness: 0.5 }), SET.METAL);
+  const ironMat = tag(new THREE.MeshStandardMaterial({ color: 0x3a3430, metalness: 0.6, roughness: 0.45 }), SET.METAL);
+  const standGeo = turned([[0.3, 0], [0.2, 0.08], [0.09, 0.25], [0.07, 0.7], [0.09, 1.0], [0.16, 1.08]], 20, 24);
+  const bowlGeo = turned([[0.16, 0], [0.34, 0.08], [0.46, 0.24], [0.48, 0.3], [0.42, 0.3], [0.001, 0.12]], 28, 24);
+  const flameGeo = flameGeometry(0.3, 0.85);
+  const coreGeo = flameGeometry(0.15, 0.5);
   [-1, 1].forEach((side, i) => {
     const bx = RUINS.x + side * 2.4;
     const bz = RUINS.z + 1.6;
-    const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.14, 1.1, 6), ironMat);
-    stand.position.set(bx, 0.55, bz);
-    const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.22, 0.3, 8), ironMat);
-    bowl.position.set(bx, 1.2, bz);
-    const flame = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.8, 7), fireMat);
-    flame.position.set(bx, 1.7, bz);
-    const core = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.45, 6), fireCore);
-    core.position.set(bx, 1.55, bz);
+    const stand = new THREE.Mesh(standGeo, ironMat);
+    stand.position.set(bx, 0, bz);
+    const bowl = new THREE.Mesh(bowlGeo, ironMat);
+    bowl.position.set(bx, 1.05, bz);
+    const flame = new THREE.Mesh(flameGeo, fireMat);
+    flame.position.set(bx, 1.28, bz);
+    const core = new THREE.Mesh(coreGeo, fireCore);
+    core.position.set(bx, 1.3, bz);
     scene.add(stand, bowl, flame, core);
     env.obstacles.push({ x: bx, z: bz, r: 0.45 });
 
@@ -148,8 +177,8 @@ export function createWorld(scene, renderer, { grassCount = 70000 } = {}) {
     updaters.push(() => {
       const t = env.time * 9 + i * 5;
       const f = 0.85 + Math.sin(t) * 0.08 + Math.sin(t * 2.3) * 0.06 + Math.sin(t * 5.1) * 0.04;
-      flame.scale.set(1, f * 1.1, 1);
-      flame.rotation.y = env.time * 2;
+      flame.scale.set(1 + Math.sin(t * 1.7) * 0.06, f * 1.1, 1 + Math.cos(t * 1.3) * 0.06);
+      flame.rotation.z = Math.sin(t * 0.7) * 0.08;
       core.scale.set(1, f, 1);
       light.intensity = 30 * f;
       shared.intensity = 1.1 * f;
@@ -157,20 +186,11 @@ export function createWorld(scene, renderer, { grassCount = 70000 } = {}) {
   });
 
   // ------------------------------------------------------------------- trees
-  const barkMat = tag(new THREE.MeshStandardMaterial({ color: 0x3b2a1e, roughness: 1, flatShading: true }), SET.BARK);
-  const leafMats = [0x8c2614, 0xa8381a, 0x6f1c10, 0xb85420, 0x9a2e18].map((c) =>
-    tag(new THREE.MeshStandardMaterial({ color: c, roughness: 0.9, flatShading: true }), SET.FOLIAGE)
+  const barkMat = tag(new THREE.MeshStandardMaterial({ color: 0x4a3526, roughness: 0.95 }), SET.BARK);
+  const leafMats = [0x9c2a16, 0xb8401c, 0x7d2012, 0xc8642a, 0xa83a1c, 0xd08a34].map((c) =>
+    tag(cutaway(new THREE.MeshStandardMaterial({ color: c, roughness: 0.8, vertexColors: true })), SET.FOLIAGE)
   );
-  const pineMat = tag(new THREE.MeshStandardMaterial({ color: 0x1e3a26, roughness: 0.9, flatShading: true }), SET.FOLIAGE);
-  const leafGeo = new THREE.IcosahedronGeometry(1, 1);
-  {
-    const lp = leafGeo.attributes.position;
-    const jr = rng(5);
-    for (let i = 0; i < lp.count; i++) {
-      lp.setXYZ(i, lp.getX(i) * (0.85 + jr() * 0.3), lp.getY(i) * (0.8 + jr() * 0.3), lp.getZ(i) * (0.85 + jr() * 0.3));
-    }
-    leafGeo.computeVertexNormals();
-  }
+  const pineMat = tag(cutaway(new THREE.MeshStandardMaterial({ color: 0x24472f, roughness: 0.85 })), SET.FOLIAGE);
 
   const tr = rng(2024);
   const trees = [];
@@ -189,34 +209,46 @@ export function createWorld(scene, renderer, { grassCount = 70000 } = {}) {
     tryTree(Math.cos(a) * rad, Math.sin(a) * rad);
   }
 
-  for (const t of trees) {
+  trees.forEach((t, n) => {
     const g = new THREE.Group();
     const pine = tr() < 0.22;
     const h = 3.5 + tr() * 3;
-    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.42, h, 6), barkMat);
-    trunk.position.y = h / 2;
-    g.add(trunk);
     let canopyR;
     if (pine) {
       canopyR = 2;
-      for (let k = 0; k < 3; k++) {
-        const cone = new THREE.Mesh(new THREE.ConeGeometry(2.2 - k * 0.55, 2.6, 7), pineMat);
-        cone.position.y = h * 0.55 + k * 1.4;
-        g.add(cone);
+      const trunk = new THREE.Mesh(trunkGeometry(h * 0.9, 900 + n), barkMat);
+      trunk.scale.set(0.7, 1, 0.7);
+      g.add(trunk);
+      for (let k = 0; k < 4; k++) {
+        const tier = new THREE.Mesh(pineTier(2.3 - k * 0.48, 2.3 - k * 0.2), pineMat);
+        tier.position.y = h * 0.4 + k * 1.15;
+        tier.rotation.y = k * 1.3;
+        g.add(tier);
       }
     } else {
       canopyR = 2.6 + tr() * 1.2;
-      const mat = leafMats[Math.floor(tr() * leafMats.length)];
-      const blobs = 4 + Math.floor(tr() * 3);
-      for (let k = 0; k < blobs; k++) {
-        const blob = new THREE.Mesh(leafGeo, mat);
+      g.add(new THREE.Mesh(trunkGeometry(h, 900 + n), barkMat));
+      // A couple of limbs reaching up into the crown.
+      for (let k = 0; k < 2; k++) {
+        const limb = new THREE.Mesh(branchGeometry(canopyR * 0.7), barkMat);
         const a = tr() * Math.PI * 2;
-        const d = k === 0 ? 0 : canopyR * 0.55;
-        const s = canopyR * (k === 0 ? 0.85 : 0.5 + tr() * 0.25);
-        blob.position.set(Math.cos(a) * d, h + tr() * 1.2 - 0.3, Math.sin(a) * d);
-        blob.scale.setScalar(s);
-        blob.rotation.set(tr() * 3, tr() * 3, tr() * 3);
-        g.add(blob);
+        limb.position.y = h * (0.55 + k * 0.15);
+        limb.rotation.set(0, a, 0.7 + tr() * 0.3);
+        g.add(limb);
+      }
+      const mat = leafMats[Math.floor(tr() * leafMats.length)];
+      const crown = new THREE.Mesh(canopyGeos[n % canopyGeos.length], mat);
+      crown.position.y = h + canopyR * 0.35;
+      crown.scale.setScalar(canopyR);
+      crown.rotation.y = tr() * Math.PI * 2;
+      g.add(crown);
+      if (tr() < 0.55) {
+        // A second, smaller crown offset to the side breaks up the outline.
+        const side = new THREE.Mesh(canopyGeos[(n + 3) % canopyGeos.length], leafMats[Math.floor(tr() * leafMats.length)]);
+        const a = tr() * Math.PI * 2;
+        side.position.set(Math.cos(a) * canopyR * 0.6, h + canopyR * 0.05, Math.sin(a) * canopyR * 0.6);
+        side.scale.setScalar(canopyR * 0.6);
+        g.add(side);
       }
     }
     g.position.set(t.x, 0, t.z);
@@ -224,12 +256,12 @@ export function createWorld(scene, renderer, { grassCount = 70000 } = {}) {
     g.scale.setScalar(0.85 + tr() * 0.35);
     scene.add(g);
     env.obstacles.push({ x: t.x, z: t.z, r: 0.55 });
-    blockers.push({ x: t.x, z: t.z, r: 0.5 });
+    blockers.push({ x: t.x, z: t.z, r: 0.6 });
     env.shadows.push({
       x: t.x - MOON_DIR.x * 2.2, z: t.z - MOON_DIR.z * 2.2,
       r: canopyR * 1.15, strength: 0.5,
     });
-  }
+  });
 
   // Scattered boulders.
   for (let i = 0; i < 30; i++) {
@@ -239,13 +271,13 @@ export function createWorld(scene, renderer, { grassCount = 70000 } = {}) {
     const z = Math.sin(a) * rad;
     if (insidePond(x, z, 1.5) || isBlocked(x, z)) continue;
     const size = 0.4 + r() * 0.9;
-    const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(size, 0), stoneMat);
-    rock.position.set(x, size * 0.3, z);
-    rock.scale.y = 0.6;
-    rock.rotation.set(r() * 3, r() * 3, r() * 3);
+    const rock = new THREE.Mesh(rockGeos[i % rockGeos.length], i % 4 ? stoneMat : mossMat);
+    rock.position.set(x, size * 0.12, z);
+    rock.scale.set(size * (0.9 + r() * 0.4), size, size * (0.9 + r() * 0.4));
+    rock.rotation.y = r() * Math.PI * 2;
     scene.add(rock);
     if (size > 0.7) env.obstacles.push({ x, z, r: size * 0.9 });
-    blockers.push({ x, z, r: size * 0.8 });
+    blockers.push({ x, z, r: size * 0.85 });
   }
 
   // ------------------------------------------------------------- grass etc.
@@ -269,6 +301,8 @@ export function createWorld(scene, renderer, { grassCount = 70000 } = {}) {
   return {
     update(camera, zoom = 1) {
       for (const u of updaters) u();
+      cut.uCutCam.value.copy(camera.position);
+      cut.uCutTarget.value.copy(env.player).setY(1.2);
       sky.place(camera);
       // Thin the fog as the camera pulls back so the wide view stays readable.
       const density = 0.016 / Math.pow(zoom, 0.75);
@@ -440,7 +474,7 @@ function createSky() {
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   const moon = new THREE.Mesh(
-    new THREE.SphereGeometry(26, 32, 16),
+    new THREE.SphereGeometry(26, 48, 24),
     tag(new THREE.MeshBasicMaterial({ map: tex, fog: false, color: 0xc8ccd4 }), SET.METAL)
   );
   group.add(moon);
@@ -448,7 +482,7 @@ function createSky() {
   const cloudMat = tag(new THREE.MeshBasicMaterial({ color: 0x12161e, fog: false }), SET.DEFAULT);
   const clouds = [];
   for (let i = 0; i < 9; i++) {
-    const cl = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), cloudMat);
+    const cl = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 3), cloudMat);
     cl.scale.set(30 + r() * 30, 6 + r() * 6, 14 + r() * 12);
     cl.userData.offset = new THREE.Vector3((r() - 0.5) * 220, (r() - 0.5) * 40 - 20, (r() - 0.5) * 120);
     group.add(cl);
