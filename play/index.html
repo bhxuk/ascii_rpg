@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Play | Glyphborne</title>
+    <meta name="description" content="Glyphborne: an RPG drawn entirely in ASCII characters." />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='black'/><text x='8' y='13' font-size='13' font-family='monospace' fill='%23e6c27a' text-anchor='middle'>@</text></svg>" />
+    <script type="module" crossorigin src="../assets/play-RGCngUbl.js"></script>
+    <link rel="modulepreload" crossorigin href="../assets/logo-BhMgqR3G.js">
+    <link rel="stylesheet" crossorigin href="../assets/play-DtB6xw_g.css">
+  </head>
+  <body>
+    <div id="game"></div>
+    <div id="labels"></div>
+
+    <div id="hud">
+      <div id="party"></div>
+      <div id="target" class="hidden"></div>
+      <div id="zone">~ Ashenmere Glade ~</div>
+      <div id="perf"></div>
+      <div id="quest" class="panel"></div>
+      <div id="log"></div>
+      <div id="hotbar" class="panel"></div>
+      <div id="hints">
+        [WASD] move &nbsp; [Shift] run &nbsp; [Space/Click] strike &nbsp; [1][2][3] skills &nbsp; [F] potion &nbsp;
+        [Q/E] turn &nbsp; [Wheel] zoom &nbsp; [Esc] menu &nbsp; [H] hide
+      </div>
+    </div>
+
+    <div id="flash"></div>
+
+    <div id="title" class="overlay">
+      <pre id="logo"></pre>
+      <div id="tagline">a knight's tale, written in characters</div>
+      <div id="continue-note"></div>
+      <div id="press">- press any key to begin -</div>
+    </div>
+
+    <div id="menu" class="overlay hidden">
+      <div class="box">
+        <pre class="box-title">+-------------------- PAUSED --------------------+</pre>
+        <button data-action="resume">[ Resume ]</button>
+        <div class="setting">
+          <span>Glyph detail</span>
+          <span class="opts" data-setting="detail">
+            <button data-value="fine">fine</button><button data-value="normal">normal</button><button data-value="chunky">chunky</button>
+          </span>
+        </div>
+        <div class="setting">
+          <span>Grass density</span>
+          <span class="opts" data-setting="grass">
+            <button data-value="low">low</button><button data-value="medium">medium</button><button data-value="high">high</button>
+          </span>
+        </div>
+        <div class="setting">
+          <span>FPS counter</span>
+          <span class="opts" data-setting="showFps">
+            <button data-value="true">on</button><button data-value="false">off</button>
+          </span>
+        </div>
+        <div class="note" id="menu-note"></div>
+        <button data-action="newgame">[ New game (erase progress) ]</button>
+        <a class="btn" href="../">[ Back to title page ]</a>
+        <pre class="box-title">+------------------------------------------------+</pre>
+      </div>
+    </div>
+
+    <div id="death" class="overlay hidden">
+      <pre class="big-red">
+__   _______ _   _   _   _   ___  _   _ _____  ______ ___   _      _      _____ _   _ 
+\ \ / /  _  | | | | | | | | / _ \| | | |  ___| |  ___/ _ \ | |    | |    |  ___| \ | |
+ \ V /| | | | | | | | |_| |/ /_\ \ | | | |__   | |_ / /_\ \| |    | |    | |__ |  \| |
+  \ / | | | | | | | |  _  ||  _  | | | |  __|  |  _||  _  || |    | |    |  __|| . ` |
+  | | \ \_/ / |_| | | | | || | | \ \_/ / |___  | |  | | | || |____| |____| |___| |\  |
+  \_/  \___/ \___/  \_| |_/\_| |_/\___/\____/  \_|  \_| |_/\_____/\_____/\____/\_| \_/</pre>
+      <div class="sub" id="death-sub">rising again at the edge of the glade...</div>
+    </div>
+
+    <div id="victory" class="overlay hidden">
+      <div class="box">
+        <pre class="gold">
+ _   _ _____ _____ _____ _____________   __
+| | | |_   _/  __ \_   _|  _  | ___ \ \ / /
+| | | | | | | /  \/ | | | | | | |_/ /\ V / 
+| | | | | | | |     | | | | | |    /  \ /  
+\ \_/ /_| |_| \__/\ | | \ \_/ / |\ \  | |  
+ \___/ \___/ \____/ \_/  \___/\_| \_| \_/</pre>
+        <div class="sub">The Hollow King is broken. Ashenmere Glade can rest.</div>
+        <pre id="victory-stats"></pre>
+        <button data-action="victory-continue">[ Keep exploring ]</button>
+      </div>
+    </div>
+
+  </body>
+</html>

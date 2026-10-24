@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Glyphborne | an RPG written in characters</title>
+    <meta name="description" content="Glyphborne is a browser RPG where every pixel is an ASCII character. Fight skeletons, cast lightning and face the Hollow King." />
+    <meta property="og:title" content="Glyphborne" />
+    <meta property="og:description" content="A knight's tale, written in characters. Play free in your browser." />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='black'/><text x='8' y='13' font-size='13' font-family='monospace' fill='%23e6c27a' text-anchor='middle'>@</text></svg>" />
+    <script type="module" crossorigin src="./assets/main-Cs822Rf4.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/logo-BhMgqR3G.js">
+    <link rel="stylesheet" crossorigin href="./assets/main-WM7nk3QS.css">
+  </head>
+  <body>
+    <header class="nav">
+      <a class="brand" href="./">@ glyphborne</a>
+      <nav>
+        <a href="#how">how it works</a>
+        <a href="#features">features</a>
+        <a href="#play">controls</a>
+        <a href="https://github.com/bhxuk/ascii_rpg" target="_blank" rel="noopener">github</a>
+        <a class="nav-play" href="play/">[ play ]</a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <div id="hero-bg"></div>
+      <div class="hero-shade"></div>
+      <div class="hero-content">
+        <pre id="hero-logo" aria-label="Glyphborne"></pre>
+        <p class="tagline">a knight's tale, written in characters</p>
+        <p class="lede">
+          A browser RPG where every pixel is a letter. Walk a moonlit glade,
+          cut down the restless dead and face the Hollow King in the ruins.
+        </p>
+        <div class="cta">
+          <a class="btn primary" href="play/">[ PLAY NOW ]</a>
+          <a class="btn" href="https://github.com/bhxuk/ascii_rpg" target="_blank" rel="noopener">[ SOURCE ON GITHUB ]</a>
+        </div>
+        <p class="small">free | no install | runs in your browser | keyboard and mouse</p>
+      </div>
+      <a class="scroll" href="#how">scroll<br />v</a>
+    </section>
+
+    <section id="how" class="section">
+      <h2><span class="hash">#</span> every pixel is a letter</h2>
+      <p class="intro">
+        Underneath, Glyphborne is a real 3D world. You never see it directly. Each frame is
+        rendered off-screen, sliced into tiny cells, and every cell is replaced by one coloured
+        character chosen for its brightness, its direction and what it is made of.
+      </p>
+      <pre class="diagram">
+  +--------------+      +---------------+      +----------------+      +--------------+
+  |   3D scene   | ---> |  6 x 9 px     | ---> |  pick a glyph  | ---> |  tint it and |
+  |  knights,    |      |  cells        |      |  by brightness |      |  draw on     |
+  |  grass, fire |      |  across the   |      |  and material  |      |  black       |
+  +--------------+      |  screen       |      +----------------+      +--------------+
+                        +---------------+
+      grass    -->  , ' | / \          stone  -->  . o O 0 # @
+      leaves   -->  c e o s w m B &    water  -->  - ~ = + *
+      armour   -->  . : ; I l ! [ ] { } X Q 0 M W &</pre>
+      <p class="intro">
+        Zoom out and the characters shrink with the camera, so the wide view resolves into a
+        finer, almost painted picture. Zoom in and the knight becomes a crowd of letters.
+      </p>
+    </section>
+
+    <section id="features" class="section">
+      <h2><span class="hash">#</span> what's inside</h2>
+      <div class="grid">
+        <article class="card">
+          <pre class="icon">  \|/ \|/
+ \|/ \|/ \|/</pre>
+          <h3>A living meadow</h3>
+          <p>Tens of thousands of grass blades sway in the wind and part around your boots. Fireflies drift, braziers crackle and the pond holds the moon.</p>
+        </article>
+        <article class="card">
+          <pre class="icon">    /
+ o-[==]---</pre>
+          <h3>Real-time combat</h3>
+          <p>Swing, crit and watch the numbers fly. Skeleton warriors wander in camps, hunt you on sight, crumble when beaten and rise again later.</p>
+        </article>
+        <article class="card">
+          <pre class="icon">   _/
+  /_
+   /</pre>
+          <h3>Spells and potions</h3>
+          <p>Whirlwind through a crowd, call lightning down on a target, mend your wounds, and keep a potion ready for when the fight turns.</p>
+        </article>
+        <article class="card">
+          <pre class="icon">  /\/\/\
+ ( x  x )</pre>
+          <h3>The Hollow King</h3>
+          <p>Clear the glade and the ground shudders. A giant crowned skeleton rises in the ruins. Watch for the red ring of his ground slam.</p>
+        </article>
+        <article class="card">
+          <pre class="icon"> [-]  [+]
+  zoom</pre>
+          <h3>Zoom for detail</h3>
+          <p>Pull the camera back and the glyphs get finer. Pick your preferred detail level, from chunky retro terminal to fine-grained print.</p>
+        </article>
+        <article class="card">
+          <pre class="icon"> [ save ]
+  ======</pre>
+          <h3>Picks up where you left off</h3>
+          <p>Your level, gold, potions and quest progress save automatically in your browser. Close the tab, come back, carry on.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="play" class="section">
+      <h2><span class="hash">#</span> how to play</h2>
+      <div class="two">
+        <pre class="keys">
+  +---------------+----------------------+
+  | W A S D       | move                 |
+  | Shift         | run                  |
+  | Space / click | sword strike         |
+  | 1             | Whirlwind   (20 mp)  |
+  | 2             | Lightning   (30 mp)  |
+  | 3             | Mend        (35 mp)  |
+  | F             | drink a potion       |
+  | Q / E         | turn the camera      |
+  | wheel / + -   | zoom (finer glyphs)  |
+  | [ / ]         | glyph size           |
+  | Esc           | menu and settings    |
+  +---------------+----------------------+</pre>
+        <div class="tips">
+          <h3>Your quest</h3>
+          <p><span class="q">1.</span> Destroy twelve skeleton warriors across Ashenmere Glade. They gather in small camps; lone ones are easier.</p>
+          <p><span class="q">2.</span> When the ground shudders, head west to the ruins. The Hollow King waits by the braziers.</p>
+          <p><span class="q">3.</span> When his blade goes up, a red ring marks where it will land. Get out of it, then punish him with lightning.</p>
+          <p class="hint">Levelling up raises your health, mana and strength. Skeletons sometimes drop potions.</p>
+          <a class="btn primary" href="play/">[ BEGIN ]</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section roadmap">
+      <h2><span class="hash">#</span> roadmap</h2>
+      <pre class="list">
+  [x] ASCII renderer with per-material glyph sets
+  [x] Ashenmere Glade: grass, trees, pond reflections, ruins, fireflies
+  [x] Combat, skills, potions, levelling, saves
+  [x] The Hollow King boss fight
+  [ ] Online multiplayer: see other knights in the glade
+  [ ] Inventory, weapon materials and runes
+  [ ] Weather and a day/night cycle
+  [ ] New zones, NPCs and quests</pre>
+    </section>
+
+    <footer class="footer">
+      <pre>-------------------------------------------------------------------</pre>
+      <p>Glyphborne | built with Three.js | <a href="https://github.com/bhxuk/ascii_rpg" target="_blank" rel="noopener">github.com/bhxuk/ascii_rpg</a></p>
+    </footer>
+
+  </body>
+</html>
