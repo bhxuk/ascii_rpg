@@ -18,6 +18,8 @@ export class Hud {
     this.labels = $('labels');
     this.hints = $('hints');
     this.zone = $('zone');
+    this.hotbar = $('hotbar');
+    this.quest = $('quest');
     $('logo').textContent = LOGO;
     this.nameplates = new Map();
     this.floaters = [];
@@ -31,7 +33,7 @@ export class Hud {
 
   dismissTitle() {
     const t = $('title');
-    if (!t.classList.contains('gone')) {
+    if (t && !t.classList.contains('gone')) {
       t.classList.add('gone');
       setTimeout(() => t.remove(), 1400);
       return true;
@@ -50,19 +52,37 @@ export class Hud {
     setTimeout(() => div.remove(), 8200);
   }
 
+  /** Only touch the DOM when the text actually changed. */
+  set(el, html) {
+    if (el._html !== html) { el.innerHTML = html; el._html = html; }
+  }
+
   updatePlayer(p) {
-    this.party.innerHTML = `
+    this.set(this.party, `
 <div class="panel member"><span class="who">${p.name}</span>  <span class="lv">LV ${p.level}  ${Math.floor(p.gold)}g</span>
 <span class="lbl">HP</span> <span class="hpbar">${bar(p.hp, p.maxHp)}</span> ${Math.ceil(p.hp)}/${p.maxHp}
 <span class="lbl">MP</span> <span class="mpbar">${bar(p.mp, p.maxMp)}</span> ${Math.floor(p.mp)}/${p.maxMp}
-<span class="lbl">XP</span> <span class="xpbar">${bar(p.xp, p.xpNext)}</span> ${p.xp}/${p.xpNext}</div>
-<div class="panel member"><span class="lbl">party</span></div>`.trim();
+<span class="lbl">XP</span> <span class="xpbar">${bar(p.xp, p.xpNext)}</span> ${p.xp}/${p.xpNext}</div>`.trim());
   }
+
+  /** slots: [{ key, name, cost, cd, maxCd, usable, count? }] */
+  updateHotbar(slots) {
+    const html = slots.map((s) => {
+      const ready = s.cd <= 0 && s.usable;
+      const state = s.cd > 0 ? `${s.cd.toFixed(1)}s` : !s.usable ? (s.count === 0 ? 'none' : 'no mp') : 'ready';
+      const extra = s.count !== undefined ? ` x${s.count}` : s.cost ? ` ${s.cost}mp` : '';
+      return `<div class="slot ${ready ? 'ready' : 'off'}"><span class="key">[${s.key}]</span> <span class="nm">${s.name}</span>\n<span class="cd">${state}${extra}</span></div>`;
+    }).join('');
+    this.set(this.hotbar, html);
+  }
+
+  updateQuest(lines) { this.set(this.quest, lines); }
+
+  setFpsVisible(on) { this.perf.classList.toggle('hidden', !on); }
 
   updateTarget(enemy) {
     if (!enemy || !enemy.alive) { this.target.classList.add('hidden'); return; }
-    this.target.classList.remove('hidden');
-    this.target.className = 'panel';
+    this.target.className = enemy.isBoss ? 'panel boss' : 'panel';
     this.target.innerHTML =
       `<span class="who">${enemy.name}</span> <span class="lbl">- lv ${enemy.level}</span>\n` +
       `<span class="hpbar">${bar(enemy.hp, enemy.maxHp, 30)}</span> ${Math.ceil(enemy.hp)}/${enemy.maxHp}`;

@@ -39,7 +39,7 @@ export class AsciiPass {
         uRes: { value: new THREE.Vector2(1, 1) },
         uCell: { value: new THREE.Vector2(7, 11) },
         uMode: { value: 1 },
-        uExposure: { value: 1.35 },
+        uExposure: { value: 1.6 },
         uTime: { value: 0 },
         uRowLen: { value: ROW_LENGTHS.map((n) => n) },
       },
@@ -179,16 +179,18 @@ export class AsciiPass {
     this.updateCell();
   }
 
+  /** Glyph height in CSS pixels. Smaller glyphs = finer, higher-res look. */
   setCellHeight(px) {
-    this.cellHeight = THREE.MathUtils.clamp(px, 6, 24);
+    this.cellHeight = THREE.MathUtils.clamp(px, 4, 24);
     this.updateCell();
   }
 
   updateCell() {
     const pr = this.pixelRatio || 1;
-    const h = Math.round(this.cellHeight * pr);
+    const h = Math.max(4, Math.round(this.cellHeight * pr));
     const w = Math.max(3, Math.round(h * 0.62));
-    this.material.uniforms.uCell.value.set(w, h);
+    const cell = this.material.uniforms.uCell.value;
+    if (cell.x !== w || cell.y !== h) cell.set(w, h);
   }
 
   render(scene, camera, time) {

@@ -267,9 +267,13 @@ export function createWorld(scene, renderer, { grassCount = 70000 } = {}) {
   scene.add(sky.group);
 
   return {
-    update(camera) {
+    update(camera, zoom = 1) {
       for (const u of updaters) u();
       sky.place(camera);
+      // Thin the fog as the camera pulls back so the wide view stays readable.
+      const density = 0.016 / Math.pow(zoom, 0.75);
+      scene.fog.density = density;
+      grass.material.uniforms.uFogDensity.value = density;
     },
     spawnPoint: new THREE.Vector3(0, 0, 2),
     ruins: RUINS,
